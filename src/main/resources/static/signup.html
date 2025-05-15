@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .error {
+            color: red;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Signup</h2>
+    <form id="signupForm">
+        <input type="text" id="username" placeholder="Enter Username" required>
+        <span id="usernameError" class="error"></span>
+
+        <input type="password" id="password" placeholder="Enter Password" required>
+        <span id="passwordError" class="error"></span>
+
+        <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+        <span id="confirmPasswordError" class="error"></span>
+
+        <button type="submit">Signup</button>
+    </form>
+    <p id="message" class="error"></p>
+</div>
+
+<script>
+    document.getElementById("signupForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        let username = document.getElementById("username").value.trim();
+        let password = document.getElementById("password").value;
+        let confirmPassword = document.getElementById("confirmPassword").value;
+        let message = document.getElementById("message");
+
+        document.getElementById("usernameError").innerText = "";
+        document.getElementById("passwordError").innerText = "";
+        document.getElementById("confirmPasswordError").innerText = "";
+
+        if (username === "") {
+            document.getElementById("usernameError").innerText = "Username is required.";
+            return;
+        }
+        if (password.length < 6) {
+            document.getElementById("passwordError").innerText = "Password must be at least 6 characters.";
+            return;
+        }
+        if (password !== confirmPassword) {
+            document.getElementById("confirmPasswordError").innerText = "Passwords do not match.";
+            return;
+        }
+
+        let user = { username, password };
+
+        try {
+            let response = await fetch("http://localhost:8080/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(user)
+            });
+
+            if (response.ok) {
+                message.style.color = "green";
+                message.innerText = "Signup successful! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "login.html";
+                }, 1500);
+            } else {
+                let errorMsg = await response.text();
+                message.style.color = "red";
+                message.innerText = errorMsg;
+            }
+        } catch (error) {
+            message.style.color = "red";
+            message.innerText = "Error connecting to server.";
+        }
+    });
+</script>
+
+</body>
+</html>

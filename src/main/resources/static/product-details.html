@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details</title>
+    <style>
+        .product-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .product-image {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Product Details</h1>
+    <div id="product-details" class="product-container"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get("id");
+        let maxQuantity = 1;
+        let currentQuantity = 1;
+
+        fetch(`http://localhost:8080/api/product/${productId}`) 
+            .then(response => response.json())
+            .then(product => {
+                if (!product || Object.keys(product).length === 0) {
+                    document.getElementById("product-details").innerHTML = "<p>Product not found.</p>";
+                    return;
+                }
+                checkCartForProduct(product.id);
+                maxQuantity = product.quantity;
+                const imageUrl = `http://localhost:8080/api/product/${productId}/image`;
+                document.getElementById("product-details").innerHTML = `
+                    <img src="${imageUrl}" alt="${product.name}" class="product-image">
+                    <div>
+                        <h2>${product.name}</h2>
+                        <p><strong>Brand:</strong> ${product.brand}</p>
+                        <p><strong>Price:</strong> ₹ ${product.price}</p>
+                        <p><strong>Description:</strong> ${product.desc}</p>
+                        <p><strong>Category:</strong> ${product.category}</p>
+                        <p><strong>Release Date:</strong> ${product.releasedate}</p>
+                        <p><strong>Available:</strong> ${product.available ? "Yes" : "Out of Stock"}</p>
+                        <button id="addToCartBtn" class="btn btn-primary mt-2" onclick="initializeCart(${product.id})">Add to Cart</button>
+                        <div id="quantityControls" class="quantity-controls hidden">
+                            <button onclick="updateQuantity(${product.id}, -1)">-</button>
+                            <span id="quantityDisplay">1</span>
+                            <button onclick="updateQuantity(${product.id}, 1)">+</button>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                document.getElementById("product-details").innerHTML = "<p>Error fetching product details.</p>";
+                console.error("Error:", error);
+            });
+
+        function initializeCart(prodid) {
+            fetch("http://localhost:8080/addToCart", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                credentials: "include",
+                body: `prodid=${prodid}&quantity=1`
+            })
+            .then(response => response.text())
+            .then(data => {
+                if (data.includes("Out of stock")) {
+                    alert("Product is out of stock.");
+                } else {
+                    document.getElementById("addToCartBtn").classList.add("hidden");
+                    document.getElementById("quantityControls").classList.remove("hidden");
+                    alert("Product added to cart successfully!");
+                }
+            })
+            .catch(error => console.error("Error adding to cart:", error));
+        }
+
+        function updateQuantity(prodid, change) {
+    if (currentQuantity === 1 && change === -1) {
+        // Delete the item from cart
+        fetch(`http://localhost:8080/delItem?prodid=${prodid}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+        .then(response => response.text())
+        .then(response => {
+            console.log("Item deleted:", response);
+            // Reset UI to "Add to Cart" button
+            currentQuantity = 1;
+            document.getElementById("addToCartBtn").classList.remove("hidden");
+            document.getElementById("quantityControls").classList.add("hidden");
+        })
+        .catch(error => console.error("Error deleting item:", error));
+        return;
+    }
+
+    // Otherwise update the quantity
+    let newQuantity = currentQuantity + change;
+    if (newQuantity < 1 || newQuantity > maxQuantity) return;
+    currentQuantity = newQuantity;
+    document.getElementById("quantityDisplay").innerText = currentQuantity;
+
+    fetch("http://localhost:8080/updateCart", {
+        method: "PUT",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "include",
+        body: `prodid=${prodid}&quantity=${currentQuantity}`
+    })
+    .then(response => response.text())
+    .then(response => {
+        console.log("Cart updated:", response);
+    })
+    .catch(error => console.error("Error updating cart quantity:", error));
+}
+
+function checkCartForProduct(prodid) {
+    fetch("http://localhost:8080/displayCart", {
+        method: "GET",
+        credentials: "include",
+    })
+    .then(response => response.json())
+    .then(cartItems => {
+        const productInCart = cartItems.find(item => item.product.id == prodid);
+        if (productInCart) {
+            currentQuantity = productInCart.quantity;
+            document.getElementById("addToCartBtn").classList.add("hidden");
+            document.getElementById("quantityControls").classList.remove("hidden");
+            document.getElementById("quantityDisplay").innerText = currentQuantity;
+        }
+    })
+    .catch(error => console.error("Error checking cart:", error));
+}
+
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
